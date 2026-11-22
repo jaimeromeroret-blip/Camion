@@ -1,6 +1,6 @@
 // Guarda la app en el teléfono para que abra sin señal.
 // Cambia el número de versión cada vez que subas una versión nueva de index.html.
-const CACHE = 'trazab-carga-v1';
+const CACHE = 'trazab-carga-v4';
 const FILES = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {
@@ -19,7 +19,7 @@ self.addEventListener('fetch', e => {
   // Solo archivos propios de la app; el envío a Google Sheets pasa directo.
   if (req.method !== 'GET' || new URL(req.url).origin !== location.origin) return;
   e.respondWith(
-    fetch(req)
+    fetch(req, { cache: 'no-cache' })
       .then(res => { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); return res; })
       .catch(() => caches.match(req).then(r => r || caches.match('./index.html')))
   );

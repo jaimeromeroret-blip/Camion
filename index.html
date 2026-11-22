@@ -97,7 +97,7 @@ textarea.in{min-height:96px;font-size:15px;font-family:inherit}
 <body>
 <header>
   <h1>Trazabilidad de Carga</h1>
-  <span class="net" id="net">En línea</span>
+  <button class="net" id="net" style="border:0;color:inherit;font:inherit;font-size:12px">En línea</button>
 </header>
 
 <main id="view"></main>
@@ -147,6 +147,7 @@ textarea.in{min-height:96px;font-size:15px;font-family:inherit}
 <script>
 (function(){
 "use strict";
+var APP_VER='4 (22-11-2026)';
 var KEY='trazab_carga_v1', CFG='trazab_cfg_v1';
 var memStore={}, storageOK=true;
 function sget(k){try{var v=localStorage.getItem(k);return v}catch(e){storageOK=false;return memStore[k]||null}}
@@ -286,13 +287,14 @@ function vAjustes(){
     '<div class="small" style="margin-top:4px">Pega aquí la URL del script de Google Apps Script (ver instrucciones). Sin URL, los datos quedan solo en este teléfono.</div>'+
     '<label class="f">URL del script</label><input class="in" id="cUrl" placeholder="https://script.google.com/macros/s/…/exec" value="'+esc(cfg.url)+'" style="font-size:14px">'+
     '<label style="display:flex;gap:8px;align-items:center;margin-top:10px;font-size:15px"><input type="checkbox" id="cAuto" '+(cfg.autoSync?'checked':'')+'> Enviar automáticamente al volver la señal</label>'+
-    '<div class="row" style="margin-top:12px"><button class="act p" id="bSync">Sincronizar ahora ('+p+' pendientes)</button></div>'+
+    '<div class="row" style="margin-top:12px"><button class="act p" id="bSync">Sincronizar ahora ('+p+' por enviar)</button></div>'+
     '<div class="small" id="syncMsg" style="margin-top:8px">'+(cfg.lastSync?'Última sincronización: '+esc(cfg.lastSync):'')+'</div></div>'+
     '<div class="card"><div style="font-weight:650">Listas de opciones</div>'+
     ta('variedades','Variedades')+ta('clases','Clases')+ta('estados','Estados (en orden del proceso)')+ta('camiones','Camiones')+ta('destinos','Destinos')+
-    '<div class="row" style="margin-top:12px"><button class="act p" id="bCfg">Guardar listas</button></div></div>'+
+    '<div class="small" style="margin-top:8px">Al guardar, las listas se envían a la planilla y llegan a los demás aparatos al sincronizar.'+(cfg.listsDirty?' <b>Listas pendientes de envío.</b>':'')+'</div><div class="row" style="margin-top:12px"><button class="act p" id="bCfg">Guardar listas</button></div></div>'+
     '<div class="card"><div style="font-weight:650">Respaldo</div><div class="small" style="margin:4px 0 10px">'+data.length+' registros guardados en este teléfono.</div>'+
-    '<div class="row"><button class="act" id="bCsv">Descargar CSV</button><button class="act" id="bCopy">Copiar CSV</button><button class="act" id="bClear" style="color:var(--bad)">Borrar todo</button></div></div>';
+    '<div class="row"><button class="act" id="bCsv">Descargar CSV</button><button class="act" id="bCopy">Copiar CSV</button><button class="act" id="bClear" style="color:var(--bad)">Borrar todo</button></div></div>'+
+    '<div class="small" style="text-align:center;margin:18px 0 4px">Versión '+APP_VER+'</div>';
 }
 
 function bindView(){
@@ -308,7 +310,7 @@ function bindView(){
     $('cAuto').onchange=function(){cfg.autoSync=$('cAuto').checked;saveCfg()};
     $('bSync').onclick=function(){cfg.url=$('cUrl').value.trim();saveCfg();sync(false)};
     $('bCfg').onclick=function(){document.querySelectorAll('[data-cfg]').forEach(function(t){
-      var l=t.value.split('\n').map(function(s){return s.trim()}).filter(Boolean);if(l.length)cfg[t.dataset.cfg]=l});saveCfg();toast('Listas guardadas');render()};
+      var l=t.value.split('\n').map(function(s){return s.trim()}).filter(Boolean);if(l.length)cfg[t.dataset.cfg]=l});cfg.listsTs=new Date().toISOString();cfg.listsDirty=true;saveCfg();toast('Listas guardadas');render();autoSync()};
     $('bCsv').onclick=dlCsv;$('bCopy').onclick=copyCsv;
     $('bClear').onclick=function(){ask('¿Borrar los '+data.length+' registros de este teléfono? Lo que ya se envió a la planilla no se borra allá.',[{t:'Cancelar'},{t:'Borrar',c:'d',f:function(){data=[];saveData();render();toast('Registros borrados')}}])};
   }
@@ -352,6 +354,7 @@ function fillLists(){
 }
 function closeForm(){$('sheet').classList.remove('open');editId=null}
 $('fClose').onclick=closeForm;
+$('net').onclick=function(){sync(false)};
 $('fab').onclick=function(){openForm(null)};
 document.querySelectorAll('[data-st]').forEach(function(b){b.onclick=function(){var i=$('fBand');i.value=Math.max(0,(parseInt(i.value,10)||0)+parseInt(b.dataset.st,10));$('eBand').classList.remove('show')}});
 $('fTarja').oninput=function(){$('eTarja').classList.remove('show')};
@@ -403,30 +406,56 @@ function copyCsv(){try{navigator.clipboard.writeText(csv()).then(function(){toas
 /* ---------- sincronización ---------- */
 var syncing=false, syncT;
 function autoSync(){if(cfg.autoSync&&cfg.url&&navigator.onLine){clearTimeout(syncT);syncT=setTimeout(function(){sync(true)},1500)}}
+var LISTS=['variedades','clases','estados','camiones','destinos'];
+function listsPayload(){var o={};LISTS.forEach(function(k){o[k]=cfg[k]});return {lists:o,ts:cfg.listsTs||new Date().toISOString()}}
+function toISO(f){f=String(f||'').trim();var m=f.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})$/);if(m)return m[3]+'-'+pad(+m[2])+'-'+pad(+m[1]);return f.slice(0,10)}
+function pull(){
+  return fetch(cfg.url+(cfg.url.indexOf('?')<0?'?':'&')+'t='+Date.now()).then(function(res){return res.json()}).then(function(j){
+    if(!j||!j.ok||!Array.isArray(j.rows))throw new Error(j&&j.error||'respuesta inválida al leer');
+    if(j.config&&j.config.lists&&!cfg.listsDirty&&String(j.config.ts||'')>String(cfg.listsTs||'')){
+      LISTS.forEach(function(k){var l=j.config.lists[k];if(Array.isArray(l)&&l.length)cfg[k]=l.map(String)});cfg.listsTs=j.config.ts;saveCfg();}
+    var byId={};data.forEach(function(r){byId[r.id]=r});
+    var nuevos=0;
+    j.rows.forEach(function(o){
+      var id=String(o['ID']||'');if(!id)return;
+      var loc=byId[id];if(loc&&loc.sync!=='ok')return; // cambios locales sin enviar mandan
+      var rec={id:id};COLS.forEach(function(c){if(c[1]!=='id')rec[c[1]]=o[c[0]]==null?'':String(o[c[0]])});
+      rec.fecha=toISO(rec.fecha);rec.bandejas=parseInt(rec.bandejas,10)||0;rec.sync='ok';
+      if(loc){Object.assign(loc,rec)}else{data.push(rec);nuevos++}
+    });
+    // registros que ya estaban sincronizados y fueron borrados de la planilla
+    var remote={};j.rows.forEach(function(o){remote[String(o['ID'])]=1});
+    data=data.filter(function(r){return r.sync!=='ok'||remote[r.id]});
+    saveData();return nuevos;
+  });
+}
 function sync(quiet){
   var msg=function(m){var e=$('syncMsg');if(e)e.textContent=m;if(!quiet)toast(m)};
   if(syncing)return;
-  if(!cfg.url){msg('Primero pega la URL del script.');return}
-  var p=pending();if(!p.length){msg('Todo está sincronizado.');return}
-  if(!navigator.onLine){msg('Sin señal: se enviará al volver la conexión.');return}
-  syncing=true;msg('Enviando '+p.length+' registros…');
-  var payload=p.map(function(r){var o={};COLS.forEach(function(c){o[c[0]]=c[1]==='fecha'?fmtFecha(r.fecha):r[c[1]]});return o});
-  fetch(cfg.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({rows:payload})})
-    .then(function(res){return res.json()})
-    .then(function(j){
-      if(!j||!j.ok)throw new Error(j&&j.error||'respuesta inválida');
-      var okIds={};(j.ids||[]).forEach(function(i){okIds[i]=1});
-      p.forEach(function(r){if(okIds[r.id])r.sync='ok'});saveData();
-      cfg.lastSync=new Date().toLocaleString('es-CL');saveCfg();
-      syncing=false;msg((j.ids||[]).length+' registros enviados a la planilla.');render();
+  if(!cfg.url){if(!quiet)msg('Primero pega la URL del script.');return}
+  if(!navigator.onLine){msg('Sin señal: se sincronizará al volver la conexión.');return}
+  syncing=true;var p=pending(),enviados=0,dirty=!!cfg.listsDirty;
+  msg(p.length||dirty?'Enviando '+p.length+' registros…':'Actualizando desde la planilla…');
+  var send=(p.length||dirty)?fetch(cfg.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({config:dirty?listsPayload():null,rows:p.map(function(r){var o={};COLS.forEach(function(c){o[c[0]]=c[1]==='fecha'?fmtFecha(r.fecha):r[c[1]]});return o})})})
+      .then(function(res){return res.json()}).then(function(j){
+        if(!j||!j.ok)throw new Error(j&&j.error||'respuesta inválida');
+        var okIds={};(j.ids||[]).forEach(function(i){okIds[i]=1});
+        p.forEach(function(r){if(okIds[r.id]){r.sync='ok';enviados++}});saveData();
+        if(dirty){cfg.listsDirty=false;saveCfg()}
+      }):Promise.resolve();
+  send.then(pull).then(function(nuevos){
+      cfg.lastSync=new Date().toLocaleString('es-CL');saveCfg();syncing=false;
+      msg('Sincronizado: '+enviados+' enviados, '+nuevos+' nuevos desde la planilla.');render();
     })
-    .catch(function(e){syncing=false;msg('No se pudo sincronizar ('+e.message+'). Los datos siguen guardados en el teléfono.');updNet()});
+    .catch(function(e){syncing=false;msg('No se pudo sincronizar ('+e.message+'). Los datos siguen guardados en este aparato.');updNet();render()});
 }
 
 /* ---------- offline (service worker) ---------- */
 try{if('serviceWorker' in navigator&&location.protocol==='https:'){navigator.serviceWorker.register('sw.js').catch(function(){})}}catch(e){}
 
 render();
+if(cfg.url&&navigator.onLine)setTimeout(function(){sync(true)},600);
+document.addEventListener('visibilitychange',function(){if(!document.hidden&&cfg.url&&navigator.onLine)sync(true)});
 })();
 </script>
 </body>
