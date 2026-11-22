@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#3b3f8f">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Trazabilidad de Carga · Arándanos</title>
+<style>
+:root{
+  --bg:#f4f5f8; --card:#fff; --ink:#1c1f2a; --muted:#6b7080; --line:#e2e4ea;
+  --pri:#3b3f8f; --pri2:#e8e9f7; --ok:#1f8a4c; --okbg:#e3f4ea; --warn:#b26a00; --warnbg:#fff3dc;
+  --bad:#b3261e; --badbg:#fde8e6; --r:12px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);
+  font-size:16px;-webkit-tap-highlight-color:transparent;
+  padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)}
+button{font:inherit;color:inherit;cursor:pointer}
+header{position:sticky;top:0;z-index:5;background:var(--pri);color:#fff;padding:12px 16px;display:flex;align-items:center;gap:10px}
+header h1{font-size:17px;margin:0;flex:1;font-weight:650;letter-spacing:.2px}
+.net{font-size:12px;padding:4px 9px;border-radius:99px;background:rgba(255,255,255,.18);white-space:nowrap}
+.net.off{background:#ffcf5c;color:#3a2a00}
+main{padding:12px 12px 96px;max-width:720px;margin:0 auto}
+nav{position:fixed;bottom:0;left:0;right:0;z-index:6;background:#fff;border-top:1px solid var(--line);display:flex;
+  padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;border:0;background:none;padding:10px 4px 12px;font-size:12.5px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:3px}
+nav button svg{width:22px;height:22px}
+nav button.on{color:var(--pri);font-weight:650}
+.fab{position:fixed;right:18px;bottom:84px;z-index:7;width:62px;height:62px;border-radius:50%;border:0;background:var(--pri);color:#fff;
+  box-shadow:0 6px 18px rgba(40,44,120,.35);font-size:34px;line-height:1;display:flex;align-items:center;justify-content:center}
+.banner{background:var(--warnbg);color:#5a3a00;border-radius:var(--r);padding:10px 12px;font-size:14px;margin-bottom:12px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.stat{background:var(--card);border-radius:var(--r);padding:10px 12px;border:1px solid var(--line)}
+.stat b{display:block;font-size:22px;font-variant-numeric:tabular-nums}
+.stat span{font-size:12px;color:var(--muted)}
+.sec{font-size:13px;font-weight:650;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:16px 4px 8px}
+.item{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:12px;margin-bottom:8px;display:flex;gap:12px;align-items:center}
+.item .main{flex:1;min-width:0}
+.item .t{font-weight:700;font-size:18px;font-variant-numeric:tabular-nums}
+.item .s{font-size:13.5px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tag{display:inline-block;font-size:11.5px;font-weight:650;padding:2px 8px;border-radius:99px;background:var(--pri2);color:var(--pri);margin-left:6px;vertical-align:2px}
+.tag.ok{background:var(--okbg);color:var(--ok)} .tag.warn{background:var(--warnbg);color:var(--warn)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--warn);flex:none} .dot.ok{background:var(--ok)}
+.act{border:1px solid var(--line);background:#fff;border-radius:10px;padding:9px 12px;font-size:14px;font-weight:600;white-space:nowrap}
+.act.p{background:var(--pri);color:#fff;border-color:var(--pri)}
+.empty{text-align:center;color:var(--muted);padding:40px 10px}
+.search{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r);font:inherit;background:#fff;margin-bottom:10px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:10px}
+.bar{display:flex;align-items:center;gap:10px;margin:7px 0;font-size:14px}
+.bar .l{width:110px;flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar .tr{flex:1;background:var(--pri2);border-radius:6px;height:20px;overflow:hidden}
+.bar .f{height:100%;background:var(--pri);border-radius:6px}
+.bar .v{width:64px;text-align:right;font-variant-numeric:tabular-nums;font-weight:650}
+/* form */
+.sheet{position:fixed;inset:0;z-index:20;background:var(--bg);display:none;flex-direction:column}
+.sheet.open{display:flex}
+.sheet .hd{background:#fff;border-bottom:1px solid var(--line);padding:12px 14px;display:flex;align-items:center;gap:10px;padding-top:calc(12px + env(safe-area-inset-top))}
+.sheet .hd h2{margin:0;font-size:17px;flex:1}
+.sheet .bd{flex:1;overflow:auto;padding:14px 14px 30px;max-width:720px;width:100%;margin:0 auto}
+.sheet .ft{background:#fff;border-top:1px solid var(--line);padding:10px 14px calc(10px + env(safe-area-inset-bottom));display:flex;gap:8px}
+.sheet .ft button{flex:1;padding:14px;border-radius:12px;border:1px solid var(--line);background:#fff;font-weight:650;font-size:16px}
+.sheet .ft .p{background:var(--pri);color:#fff;border-color:var(--pri)}
+.x{border:0;background:none;font-size:26px;line-height:1;padding:4px 8px;color:var(--muted)}
+label.f{display:block;font-size:13px;font-weight:650;color:var(--muted);margin:14px 2px 6px;text-transform:uppercase;letter-spacing:.4px}
+label.f i{color:var(--bad);font-style:normal}
+input.in,textarea.in{width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:17px;background:#fff}
+input.in:focus,textarea.in:focus{outline:2px solid var(--pri);border-color:var(--pri)}
+input.big{font-size:24px;font-weight:700;letter-spacing:1px;font-variant-numeric:tabular-nums}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:#fff;border-radius:10px;padding:11px 14px;font-size:15px;min-width:52px;text-align:center}
+.chip.on{background:var(--pri);border-color:var(--pri);color:#fff;font-weight:650}
+.step{display:flex;align-items:stretch;border:1px solid var(--line);border-radius:10px;background:#fff;overflow:hidden}
+.step button{width:64px;border:0;background:var(--pri2);color:var(--pri);font-size:26px;font-weight:700}
+.step input{flex:1;border:0;text-align:center;font-size:24px;font-weight:700;padding:10px;min-width:0;font-variant-numeric:tabular-nums}
+.err{color:var(--bad);font-size:13.5px;margin-top:6px;display:none}
+.err.show{display:block}
+.hint{color:var(--muted);font-size:13px;margin-top:6px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+/* dialog */
+.dlg{position:fixed;inset:0;z-index:40;background:rgba(20,22,40,.45);display:none;align-items:center;justify-content:center;padding:20px}
+.dlg.open{display:flex}
+.dlg .box{background:#fff;border-radius:16px;padding:18px;max-width:380px;width:100%}
+.dlg p{margin:0 0 16px;line-height:1.4}
+.dlg .row button{flex:1;padding:12px;border-radius:10px;border:1px solid var(--line);background:#fff;font-weight:650}
+.dlg .row .p{background:var(--pri);color:#fff;border-color:var(--pri)} .dlg .row .d{background:var(--bad);color:#fff;border-color:var(--bad)}
+.toast{position:fixed;left:50%;bottom:160px;transform:translateX(-50%);background:#23263a;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:50;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90%}
+.toast.show{opacity:1}
+textarea.in{min-height:96px;font-size:15px;font-family:inherit}
+.small{font-size:13px;color:var(--muted);line-height:1.45}
+</style>
+</head>
+<body>
+<header>
+  <h1>Trazabilidad de Carga</h1>
+  <span class="net" id="net">En línea</span>
+</header>
+
+<main id="view"></main>
+
+<button class="fab" id="fab" aria-label="Nuevo pallet">+</button>
+
+<nav id="nav">
+  <button data-v="carga" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>Carga</button>
+  <button data-v="historial"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>Historial</button>
+  <button data-v="resumen"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>Resumen</button>
+  <button data-v="ajustes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Ajustes</button>
+</nav>
+
+<!-- Formulario -->
+<div class="sheet" id="sheet">
+  <div class="hd"><button class="x" id="fClose" aria-label="Cerrar">×</button><h2 id="fTitle">Nuevo pallet</h2></div>
+  <div class="bd">
+    <div class="two">
+      <div><label class="f">Fecha <i>*</i></label><input class="in" type="date" id="fFecha"></div>
+      <div><label class="f">Hora</label><input class="in" type="time" id="fHora"></div>
+    </div>
+    <label class="f">Tarja pallet <i>*</i></label>
+    <input class="in big" id="fTarja" inputmode="numeric" autocomplete="off" placeholder="Ej: 0117">
+    <div class="err" id="eTarja"></div>
+    <label class="f">Bandejas <i>*</i></label>
+    <div class="step"><button type="button" data-st="-1">−</button><input id="fBand" inputmode="numeric" value="0"><button type="button" data-st="1">+</button></div>
+    <div class="err" id="eBand">Ingresa la cantidad de bandejas.</div>
+    <label class="f">Variedad <i>*</i></label><div class="chips" id="cVariedad"></div><div class="err" id="eVariedad">Elige la variedad.</div>
+    <label class="f">Clase</label><div class="chips" id="cClase"></div>
+    <label class="f">Acopio</label><input class="in" id="fAcopio" list="lAcopio" autocomplete="off" placeholder="Escribe el acopio"><datalist id="lAcopio"></datalist>
+    <label class="f">Estado</label><div class="chips" id="cEstado"></div>
+    <label class="f">N° camión <i>*</i></label><div class="chips" id="cCamion"></div><div class="err" id="eCamion">Elige el camión.</div>
+    <label class="f">Chofer</label><input class="in" id="fChofer" list="lChofer" autocomplete="off" placeholder="Nombre del chofer"><datalist id="lChofer"></datalist>
+    <label class="f">Destino</label><div class="chips" id="cDestino"></div>
+    <label class="f">Detalle</label><input class="in" id="fDetalle" placeholder="Observación, encargado, etc.">
+    <div id="fDelWrap" style="margin-top:22px;display:none"><button class="act" id="fDel" style="color:var(--bad);width:100%">Eliminar este registro</button></div>
+  </div>
+  <div class="ft">
+    <button id="fSaveNew">Guardar y otra</button>
+    <button class="p" id="fSave">Guardar</button>
+  </div>
+</div>
+
+<div class="dlg" id="dlg"><div class="box"><p id="dlgMsg"></p><div class="row" id="dlgBtns"></div></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+var KEY='trazab_carga_v1', CFG='trazab_cfg_v1';
+var memStore={}, storageOK=true;
+function sget(k){try{var v=localStorage.getItem(k);return v}catch(e){storageOK=false;return memStore[k]||null}}
+function sset(k,v){try{localStorage.setItem(k,v)}catch(e){storageOK=false;memStore[k]=v}}
+
+var DEFAULT_CFG={
+  variedades:['Duke','Legacy','Brigitta','Emerald'],
+  clases:['Exportación','Mercado interno','Descarte'],
+  acopios:['Acopio 1','Acopio 2','Acopio 3'],
+  estados:['En acopio','Cargado','Despachado'],
+  camiones:['1','2','3','4','5'],
+  destinos:['MEREX','ANGUS'],
+  url:'', autoSync:true
+};
+var cfg, data;
+function load(){
+  try{cfg=JSON.parse(sget(CFG)||'null')}catch(e){cfg=null}
+  cfg=Object.assign({},DEFAULT_CFG,cfg||{});
+  try{data=JSON.parse(sget(KEY)||'[]')}catch(e){data=[]}
+  if(!Array.isArray(data))data=[];
+}
+function saveData(){sset(KEY,JSON.stringify(data))}
+function saveCfg(){sset(CFG,JSON.stringify(cfg))}
+load();
+
+function uid(){return 'P'+Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
+function pad(n){return (n<10?'0':'')+n}
+function today(){var d=new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function nowHM(){var d=new Date();return pad(d.getHours())+':'+pad(d.getMinutes())}
+function fmtFecha(f){if(!f)return '';var p=f.split('-');return p[2]+'-'+p[1]+'-'+p[0]}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function fmtN(n){return Number(n||0).toLocaleString('es-CL')}
+var $=function(id){return document.getElementById(id)};
+
+/* ---------- toast / dialog ---------- */
+var tt;
+function toast(m){var t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(function(){t.classList.remove('show')},2200)}
+function ask(msg,btns){
+  $('dlgMsg').textContent=msg;var w=$('dlgBtns');w.innerHTML='';
+  btns.forEach(function(b){var e=document.createElement('button');e.textContent=b.t;if(b.c)e.className=b.c;
+    e.onclick=function(){$('dlg').classList.remove('open');if(b.f)b.f()};w.appendChild(e)});
+  $('dlg').classList.add('open');
+}
+
+/* ---------- red ---------- */
+function updNet(){var on=navigator.onLine;var n=$('net');n.textContent=on?'En línea':'Sin señal';n.classList.toggle('off',!on);
+  var p=pending().length;if(p)n.textContent+=' · '+p+' por enviar'}
+window.addEventListener('online',function(){updNet();if(cfg.autoSync&&cfg.url)sync(true)});
+window.addEventListener('offline',updNet);
+function pending(){return data.filter(function(r){return r.sync!=='ok'})}
+
+/* ---------- navegación ---------- */
+var cur='carga', q='';
+function go(v){cur=v;document.querySelectorAll('#nav button').forEach(function(b){b.classList.toggle('on',b.dataset.v===v)});
+  $('fab').style.display=(v==='ajustes')?'none':'flex';render();window.scrollTo(0,0)}
+document.querySelectorAll('#nav button').forEach(function(b){b.onclick=function(){go(b.dataset.v)}});
+
+function render(){
+  updNet();
+  var v=$('view');
+  var warn=storageOK?'':'<div class="banner">Este navegador no permite guardar datos de forma permanente. Lo que registres se perderá al cerrar la página.</div>';
+  if(cur==='carga')v.innerHTML=warn+vCarga();
+  else if(cur==='historial')v.innerHTML=warn+vHist();
+  else if(cur==='resumen')v.innerHTML=warn+vResumen();
+  else v.innerHTML=warn+vAjustes();
+  bindView();
+}
+
+function itemHTML(r,actions){
+  var est=r.estado||'';var cls=est===cfg.estados[cfg.estados.length-1]?'ok':(est===cfg.estados[0]?'warn':'');
+  return '<div class="item" data-id="'+r.id+'"><span class="dot'+(r.sync==='ok'?' ok':'')+'" title="'+(r.sync==='ok'?'Sincronizado':'Pendiente de envío')+'"></span>'+
+    '<div class="main"><div class="t">'+esc(r.tarja)+(est?'<span class="tag '+cls+'">'+esc(est)+'</span>':'')+'</div>'+
+    '<div class="s">'+fmtN(r.bandejas)+' bandejas · '+esc(r.variedad||'—')+(r.clase?' · '+esc(r.clase):'')+' · Cam. '+esc(r.camion||'—')+(r.destino?' → '+esc(r.destino):'')+'</div>'+
+    '<div class="s">'+fmtFecha(r.fecha)+' '+esc(r.hora||'')+(r.acopio?' · '+esc(r.acopio):'')+(r.chofer?' · '+esc(r.chofer):'')+(r.detalle?' · '+esc(r.detalle):'')+'</div></div>'+
+    (actions||'')+'</div>';
+}
+
+function vCarga(){
+  var last=cfg.estados[cfg.estados.length-1];
+  var act=data.filter(function(r){return r.estado!==last}).sort(function(a,b){return (b.fecha+b.hora).localeCompare(a.fecha+a.hora)});
+  var hoy=data.filter(function(r){return r.fecha===today()});
+  var bHoy=hoy.reduce(function(s,r){return s+(+r.bandejas||0)},0);
+  var h='<div class="stats"><div class="stat"><b>'+hoy.length+'</b><span>Pallets hoy</span></div>'+
+    '<div class="stat"><b>'+fmtN(bHoy)+'</b><span>Bandejas hoy</span></div>'+
+    '<div class="stat"><b>'+act.length+'</b><span>Activos</span></div></div>';
+  if(!act.length)return h+'<div class="empty">No hay pallets activos.<br>Toca <b>+</b> para registrar uno.</div>';
+  cfg.estados.slice(0,-1).forEach(function(e,i){
+    var g=act.filter(function(r){return r.estado===e});if(!g.length)return;
+    var next=cfg.estados[i+1];
+    h+='<div class="sec">'+esc(e)+' ('+g.length+')</div>';
+    g.forEach(function(r){h+=itemHTML(r,'<button class="act p" data-adv="'+r.id+'">'+esc(next)+'</button>')});
+  });
+  var otros=act.filter(function(r){return cfg.estados.indexOf(r.estado)<0});
+  if(otros.length){h+='<div class="sec">Sin estado ('+otros.length+')</div>';otros.forEach(function(r){h+=itemHTML(r)})}
+  return h;
+}
+
+function vHist(){
+  var list=data.slice().sort(function(a,b){return (b.fecha+b.hora).localeCompare(a.fecha+a.hora)});
+  if(q){var s=q.toLowerCase();list=list.filter(function(r){return [r.tarja,r.detalle,r.acopio,r.variedad,r.clase,r.estado,r.destino,'cam '+r.camion,r.chofer,fmtFecha(r.fecha)].join(' ').toLowerCase().indexOf(s)>=0})}
+  var h='<input class="search" id="q" placeholder="Buscar tarja, variedad, camión, fecha…" value="'+esc(q)+'">';
+  if(!list.length)return h+'<div class="empty">'+(q?'Sin resultados.':'Aún no hay registros.')+'</div>';
+  var f='';list.forEach(function(r){if(r.fecha!==f){f=r.fecha;h+='<div class="sec">'+fmtFecha(f)+'</div>'}h+=itemHTML(r)});
+  return h;
+}
+
+function bars(title,obj){
+  var keys=Object.keys(obj).sort(function(a,b){return obj[b]-obj[a]});
+  if(!keys.length)return '';
+  var max=Math.max.apply(null,keys.map(function(k){return obj[k]}))||1;
+  var h='<div class="card"><div style="font-weight:650;margin-bottom:6px">'+title+'</div>';
+  keys.forEach(function(k){h+='<div class="bar"><span class="l">'+esc(k)+'</span><span class="tr"><span class="f" style="display:block;width:'+(obj[k]/max*100)+'%"></span></span><span class="v">'+fmtN(obj[k])+'</span></div>'});
+  return h+'</div>';
+}
+var resFecha=null;
+function vResumen(){
+  if(!resFecha)resFecha=today();
+  var rs=data.filter(function(r){return r.fecha===resFecha});
+  var byV={},byC={},byD={},byCl={};
+  rs.forEach(function(r){var b=+r.bandejas||0;
+    byV[r.variedad||'—']=(byV[r.variedad||'—']||0)+b;
+    byC['Camión '+(r.camion||'—')]=(byC['Camión '+(r.camion||'—')]||0)+b;
+    byD[r.destino||'—']=(byD[r.destino||'—']||0)+b;
+    if(r.clase)byCl[r.clase]=(byCl[r.clase]||0)+b;});
+  var tot=rs.reduce(function(s,r){return s+(+r.bandejas||0)},0);
+  var h='<div class="row" style="margin-bottom:10px"><input class="in" type="date" id="resF" value="'+resFecha+'" style="flex:1"></div>'+
+    '<div class="stats"><div class="stat"><b>'+rs.length+'</b><span>Pallets</span></div><div class="stat"><b>'+fmtN(tot)+'</b><span>Bandejas</span></div>'+
+    '<div class="stat"><b>'+(rs.length?fmtN(Math.round(tot/rs.length)):0)+'</b><span>Band./pallet</span></div></div>';
+  if(!rs.length)return h+'<div class="empty">Sin registros para esta fecha.</div>';
+  return h+bars('Bandejas por variedad',byV)+bars('Bandejas por camión',byC)+bars('Bandejas por destino',byD)+bars('Bandejas por clase',byCl);
+}
+
+function vAjustes(){
+  function ta(k,t){return '<label class="f">'+t+' (uno por línea)</label><textarea class="in" data-cfg="'+k+'">'+esc(cfg[k].join('\n'))+'</textarea>'}
+  var p=pending().length;
+  return '<div class="card"><div style="font-weight:650">Sincronizar con Google Sheets</div>'+
+    '<div class="small" style="margin-top:4px">Pega aquí la URL del script de Google Apps Script (ver instrucciones). Sin URL, los datos quedan solo en este teléfono.</div>'+
+    '<label class="f">URL del script</label><input class="in" id="cUrl" placeholder="https://script.google.com/macros/s/…/exec" value="'+esc(cfg.url)+'" style="font-size:14px">'+
+    '<label style="display:flex;gap:8px;align-items:center;margin-top:10px;font-size:15px"><input type="checkbox" id="cAuto" '+(cfg.autoSync?'checked':'')+'> Enviar automáticamente al volver la señal</label>'+
+    '<div class="row" style="margin-top:12px"><button class="act p" id="bSync">Sincronizar ahora ('+p+' pendientes)</button></div>'+
+    '<div class="small" id="syncMsg" style="margin-top:8px">'+(cfg.lastSync?'Última sincronización: '+esc(cfg.lastSync):'')+'</div></div>'+
+    '<div class="card"><div style="font-weight:650">Listas de opciones</div>'+
+    ta('variedades','Variedades')+ta('clases','Clases')+ta('estados','Estados (en orden del proceso)')+ta('camiones','Camiones')+ta('destinos','Destinos')+
+    '<div class="row" style="margin-top:12px"><button class="act p" id="bCfg">Guardar listas</button></div></div>'+
+    '<div class="card"><div style="font-weight:650">Respaldo</div><div class="small" style="margin:4px 0 10px">'+data.length+' registros guardados en este teléfono.</div>'+
+    '<div class="row"><button class="act" id="bCsv">Descargar CSV</button><button class="act" id="bCopy">Copiar CSV</button><button class="act" id="bClear" style="color:var(--bad)">Borrar todo</button></div></div>';
+}
+
+function bindView(){
+  document.querySelectorAll('#view .item').forEach(function(el){el.onclick=function(e){if(e.target.closest('[data-adv]'))return;openForm(el.dataset.id)}});
+  document.querySelectorAll('[data-adv]').forEach(function(b){b.onclick=function(){
+    var r=data.find(function(x){return x.id===b.dataset.adv});if(!r)return;
+    var i=cfg.estados.indexOf(r.estado);r.estado=cfg.estados[Math.min(i+1,cfg.estados.length-1)];
+    r.modificado=new Date().toISOString();r.sync='pend';saveData();toast(r.tarja+' → '+r.estado);render();autoSync()}});
+  var qi=$('q');if(qi){qi.oninput=function(){q=qi.value;var p=qi.selectionStart;render();var n=$('q');n.focus();n.setSelectionRange(p,p)}}
+  var rf=$('resF');if(rf)rf.onchange=function(){resFecha=rf.value||today();render()};
+  if(cur==='ajustes'){
+    $('cUrl').onchange=function(){cfg.url=$('cUrl').value.trim();saveCfg();toast('URL guardada')};
+    $('cAuto').onchange=function(){cfg.autoSync=$('cAuto').checked;saveCfg()};
+    $('bSync').onclick=function(){cfg.url=$('cUrl').value.trim();saveCfg();sync(false)};
+    $('bCfg').onclick=function(){document.querySelectorAll('[data-cfg]').forEach(function(t){
+      var l=t.value.split('\n').map(function(s){return s.trim()}).filter(Boolean);if(l.length)cfg[t.dataset.cfg]=l});saveCfg();toast('Listas guardadas');render()};
+    $('bCsv').onclick=dlCsv;$('bCopy').onclick=copyCsv;
+    $('bClear').onclick=function(){ask('¿Borrar los '+data.length+' registros de este teléfono? Lo que ya se envió a la planilla no se borra allá.',[{t:'Cancelar'},{t:'Borrar',c:'d',f:function(){data=[];saveData();render();toast('Registros borrados')}}])};
+  }
+}
+
+/* ---------- formulario ---------- */
+var editId=null, sel={};
+var sticky={};
+function chips(id,key,opts){
+  var w=$(id);w.innerHTML='';
+  opts.forEach(function(o){var b=document.createElement('button');b.type='button';b.className='chip'+(sel[key]===o?' on':'');b.textContent=o;
+    b.onclick=function(){sel[key]=(sel[key]===o&&['estado','variedad','camion'].indexOf(key)<0)?'':o;chips(id,key,opts);var e=$('e'+key.charAt(0).toUpperCase()+key.slice(1));if(e)e.classList.remove('show')};w.appendChild(b)});
+}
+function drawChips(){
+  chips('cVariedad','variedad',cfg.variedades);chips('cClase','clase',cfg.clases);
+  chips('cEstado','estado',cfg.estados);chips('cCamion','camion',cfg.camiones);chips('cDestino','destino',cfg.destinos);
+}
+function openForm(id){
+  editId=id||null;var r=id?data.find(function(x){return x.id===id}):null;
+  $('fTitle').textContent=r?'Editar pallet '+r.tarja:'Nuevo pallet';
+  $('fFecha').value=r?r.fecha:(sticky.fecha||today());
+  $('fHora').value=r?(r.hora||''):nowHM();
+  $('fTarja').value=r?r.tarja:'';
+  $('fBand').value=r?r.bandejas:(sticky.bandejas||0);
+  $('fDetalle').value=r?(r.detalle||''):'';
+  $('fAcopio').value=r?(r.acopio||''):(sticky.acopio||'');
+  $('fChofer').value=r?(r.chofer||''):(sticky.chofer||'');
+  fillLists();
+  sel={variedad:r?r.variedad:(sticky.variedad||''),clase:r?r.clase:(sticky.clase||''),
+    estado:r?r.estado:cfg.estados[0],camion:r?String(r.camion||''):(sticky.camion||''),destino:r?r.destino:(sticky.destino||'')};
+  drawChips();
+  ['eTarja','eBand','eVariedad','eCamion'].forEach(function(e){$(e).classList.remove('show')});
+  $('fDelWrap').style.display=r?'block':'none';$('fSaveNew').style.display=r?'none':'block';
+  $('sheet').classList.add('open');
+  if(!r)setTimeout(function(){$('fTarja').focus()},80);
+}
+function fillLists(){
+  [['lAcopio','acopio'],['lChofer','chofer']].forEach(function(x){
+    var seen={},h='';data.slice().reverse().forEach(function(r){var v=r[x[1]];if(v&&!seen[v.toLowerCase()]){seen[v.toLowerCase()]=1;h+='<option value="'+esc(v)+'">'}});
+    $(x[0]).innerHTML=h});
+}
+function closeForm(){$('sheet').classList.remove('open');editId=null}
+$('fClose').onclick=closeForm;
+$('fab').onclick=function(){openForm(null)};
+document.querySelectorAll('[data-st]').forEach(function(b){b.onclick=function(){var i=$('fBand');i.value=Math.max(0,(parseInt(i.value,10)||0)+parseInt(b.dataset.st,10));$('eBand').classList.remove('show')}});
+$('fTarja').oninput=function(){$('eTarja').classList.remove('show')};
+
+function trySave(again,force){
+  var tarja=$('fTarja').value.trim(), band=parseInt($('fBand').value,10)||0, ok=true;
+  if(!tarja){$('eTarja').textContent='Ingresa el número de tarja.';$('eTarja').classList.add('show');ok=false}
+  if(band<=0){$('eBand').classList.add('show');ok=false}
+  if(!sel.variedad){$('eVariedad').classList.add('show');ok=false}
+  if(!sel.camion){$('eCamion').classList.add('show');ok=false}
+  if(!$('fFecha').value){ok=false;toast('Falta la fecha')}
+  if(!ok){toast('Revisa los campos marcados');return}
+  var dup=data.find(function(x){return x.tarja===tarja&&x.id!==editId});
+  if(dup&&!force){
+    ask('La tarja '+tarja+' ya está registrada ('+fmtFecha(dup.fecha)+', '+dup.bandejas+' bandejas, '+(dup.estado||'')+'). ¿Guardar de todas formas?',
+      [{t:'Revisar'},{t:'Guardar igual',c:'p',f:function(){trySave(again,true)}}]);return;
+  }
+  var rec=editId?data.find(function(x){return x.id===editId}):{id:uid(),creado:new Date().toISOString()};
+  Object.assign(rec,{fecha:$('fFecha').value,hora:$('fHora').value,tarja:tarja,detalle:$('fDetalle').value.trim(),acopio:$('fAcopio').value.trim(),chofer:$('fChofer').value.trim(),
+    bandejas:band,clase:sel.clase||'',variedad:sel.variedad,estado:sel.estado||cfg.estados[0],camion:sel.camion,destino:sel.destino||'',
+    modificado:new Date().toISOString(),sync:'pend'});
+  if(!editId)data.push(rec);
+  saveData();
+  sticky={fecha:rec.fecha,variedad:rec.variedad,clase:rec.clase,acopio:rec.acopio,chofer:rec.chofer,camion:rec.camion,destino:rec.destino,bandejas:rec.bandejas};
+  toast('Pallet '+tarja+' guardado');
+  if(again){openForm(null)}else{closeForm()}
+  render();autoSync();
+}
+$('fSave').onclick=function(){trySave(false)};
+$('fSaveNew').onclick=function(){trySave(true)};
+$('fDel').onclick=function(){var id=editId;var r=data.find(function(x){return x.id===id});
+  ask('¿Eliminar el pallet '+(r?r.tarja:'')+'? Si ya se envió a la planilla, también debes borrarlo allá.',[{t:'Cancelar'},{t:'Eliminar',c:'d',f:function(){
+    data=data.filter(function(x){return x.id!==id});saveData();closeForm();render();toast('Registro eliminado')}}])};
+
+/* ---------- CSV ---------- */
+var COLS=[['ID','id'],['FECHA','fecha'],['HORA','hora'],['TARJA PALLET','tarja'],['DETALLE','detalle'],['ACOPIO','acopio'],['BANDEJAS','bandejas'],
+  ['CLASE','clase'],['VARIEDAD','variedad'],['ESTADO','estado'],['N° CAMION','camion'],['CHOFER','chofer'],['DESTINO','destino'],['MODIFICADO','modificado']];
+function csv(){
+  var q=function(v){v=String(v==null?'':v);return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+  var rows=[COLS.map(function(c){return c[0]}).join(';')];
+  data.slice().sort(function(a,b){return (a.fecha+a.hora).localeCompare(b.fecha+b.hora)}).forEach(function(r){
+    rows.push(COLS.map(function(c){return q(c[1]==='fecha'?fmtFecha(r.fecha):r[c[1]])}).join(';'))});
+  return '﻿'+rows.join('\n');
+}
+function dlCsv(){try{var b=new Blob([csv()],{type:'text/csv;charset=utf-8'});var a=document.createElement('a');a.href=URL.createObjectURL(b);
+  a.download='carga_'+today()+'.csv';document.body.appendChild(a);a.click();a.remove();toast('CSV descargado')}catch(e){toast('No se pudo descargar; usa Copiar CSV')}}
+function copyCsv(){try{navigator.clipboard.writeText(csv()).then(function(){toast('CSV copiado')},function(){toast('No se pudo copiar')})}catch(e){toast('No se pudo copiar')}}
+
+/* ---------- sincronización ---------- */
+var syncing=false, syncT;
+function autoSync(){if(cfg.autoSync&&cfg.url&&navigator.onLine){clearTimeout(syncT);syncT=setTimeout(function(){sync(true)},1500)}}
+function sync(quiet){
+  var msg=function(m){var e=$('syncMsg');if(e)e.textContent=m;if(!quiet)toast(m)};
+  if(syncing)return;
+  if(!cfg.url){msg('Primero pega la URL del script.');return}
+  var p=pending();if(!p.length){msg('Todo está sincronizado.');return}
+  if(!navigator.onLine){msg('Sin señal: se enviará al volver la conexión.');return}
+  syncing=true;msg('Enviando '+p.length+' registros…');
+  var payload=p.map(function(r){var o={};COLS.forEach(function(c){o[c[0]]=c[1]==='fecha'?fmtFecha(r.fecha):r[c[1]]});return o});
+  fetch(cfg.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({rows:payload})})
+    .then(function(res){return res.json()})
+    .then(function(j){
+      if(!j||!j.ok)throw new Error(j&&j.error||'respuesta inválida');
+      var okIds={};(j.ids||[]).forEach(function(i){okIds[i]=1});
+      p.forEach(function(r){if(okIds[r.id])r.sync='ok'});saveData();
+      cfg.lastSync=new Date().toLocaleString('es-CL');saveCfg();
+      syncing=false;msg((j.ids||[]).length+' registros enviados a la planilla.');render();
+    })
+    .catch(function(e){syncing=false;msg('No se pudo sincronizar ('+e.message+'). Los datos siguen guardados en el teléfono.');updNet()});
+}
+
+/* ---------- offline (service worker) ---------- */
+try{if('serviceWorker' in navigator&&location.protocol==='https:'){navigator.serviceWorker.register('sw.js').catch(function(){})}}catch(e){}
+
+render();
+})();
+</script>
+</body>
+</html>
